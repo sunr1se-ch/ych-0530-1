@@ -10,10 +10,19 @@
     <div class="container">
         <header class="header">
             <h1>皮影戏关节开合角度序列自检</h1>
-            <div class="character-selector">
-                <label for="characterSelect">角色：</label>
-                <select id="characterSelect"></select>
-                <button id="loadCharacterBtn">加载</button>
+            <div class="header-controls">
+                <div class="mode-toggle">
+                    <span class="mode-label">模式：</span>
+                    <div class="mode-toggle-group">
+                        <button class="mode-btn active" data-mode="practice">练习</button>
+                        <button class="mode-btn" data-mode="assessment">考核</button>
+                    </div>
+                </div>
+                <div class="character-selector">
+                    <label for="characterSelect">角色：</label>
+                    <select id="characterSelect"></select>
+                    <button id="loadCharacterBtn">加载</button>
+                </div>
             </div>
         </header>
 

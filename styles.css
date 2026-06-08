@@ -33,6 +33,53 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
+.header-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mode-label {
+    color: #aaa;
+    font-size: 1rem;
+}
+
+.mode-toggle-group {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid #f5c518;
+    overflow: hidden;
+}
+
+.mode-btn {
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, #f5c518, #e5b000);
+    color: #1a1a2e;
+}
+
+.mode-btn:hover:not(.active) {
+    background: rgba(245, 197, 24, 0.2);
+}
+
 .character-selector {
     display: flex;
     justify-content: center;
@@ -457,6 +504,15 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(245, 197, 24, 0.7);
+}
+
+.assessment-mode .target-angle,
+.assessment-mode .joint-status span:last-child {
+    display: none;
+}
+
+.assessment-mode .joint-status {
+    justify-content: center;
 }
 
 @media (max-width: 768px) {

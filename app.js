@@ -3,9 +3,15 @@ const CONFIG = {
     NEAR_THRESHOLD: 12,
     MAX_OFF_STREAK: 3,
     CHARACTERS_DIR: 'characters/',
+    MODES: {
+        PRACTICE: 'practice',
+        ASSESSMENT: 'assessment'
+    },
     STORAGE_KEYS: {
         BEST_STREAK: 'shadow_puppet_best_streak_',
-        SAVE_STATE: 'shadow_puppet_save_state_'
+        SAVE_STATE: 'shadow_puppet_save_state_',
+        LAST_MODE: 'shadow_puppet_last_mode_',
+        LAST_CHARACTER: 'shadow_puppet_last_character'
     }
 };
 
@@ -13,17 +19,50 @@ class ShadowPuppetApp {
     constructor() {
         this.state = {
             character: null,
-            currentStep: 0,
-            currentStreak: 0,
-            bestStreak: 0,
-            consecutiveOff: 0,
-            history: [],
-            jointStats: {},
-            totalDeviation: 0,
-            submissionCount: 0,
-            currentAngles: {}
+            currentCharacterFile: null,
+            currentMode: CONFIG.MODES.PRACTICE,
+            modeStates: {
+                [CONFIG.MODES.PRACTICE]: {
+                    currentStep: 0,
+                    currentStreak: 0,
+                    bestStreak: 0,
+                    consecutiveOff: 0,
+                    history: [],
+                    jointStats: {},
+                    totalDeviation: 0,
+                    submissionCount: 0,
+                    currentAngles: {}
+                },
+                [CONFIG.MODES.ASSESSMENT]: {
+                    currentStep: 0,
+                    currentStreak: 0,
+                    bestStreak: 0,
+                    consecutiveOff: 0,
+                    history: [],
+                    jointStats: {},
+                    totalDeviation: 0,
+                    submissionCount: 0,
+                    currentAngles: {}
+                }
+            }
         };
         this.init();
+    }
+
+    get modeState() {
+        return this.state.modeStates[this.state.currentMode];
+    }
+
+    set modeState(value) {
+        this.state.modeStates[this.state.currentMode] = value;
+    }
+
+    getStorageKey(baseKey, characterFile) {
+        return baseKey + characterFile + '_' + this.state.currentMode;
+    }
+
+    isAssessmentMode() {
+        return this.state.currentMode === CONFIG.MODES.ASSESSMENT;
     }
 
     async init() {
@@ -77,6 +116,7 @@ class ShadowPuppetApp {
             
             this.initializeJointStats();
             this.initializeCurrentAngles();
+            this.updateModeIndicator();
             this.render();
             this.showToast(`已加载角色：${character.name}`, 'success');
             
@@ -93,8 +133,8 @@ class ShadowPuppetApp {
         if (!this.state.character) return;
         
         this.state.character.joints.forEach(joint => {
-            if (!this.state.jointStats[joint.id]) {
-                this.state.jointStats[joint.id] = {
+            if (!this.modeState.jointStats[joint.id]) {
+                this.modeState.jointStats[joint.id] = {
                     name: joint.name,
                     match: 0,
                     near: 0,
@@ -110,15 +150,21 @@ class ShadowPuppetApp {
         if (!this.state.character) return;
         
         const firstSequence = this.state.character.joints[0]?.sequence || [];
-        const currentTime = firstSequence[this.state.currentStep]?.time || 0;
+        const currentTime = firstSequence[this.modeState.currentStep]?.time || 0;
         
         this.state.character.joints.forEach(joint => {
             const targetPoint = joint.sequence.find(p => p.time === currentTime);
-            const targetAngle = targetPoint ? targetPoint.angle : 
-                               (joint.minAngle + joint.maxAngle) / 2;
+            let initialAngle;
             
-            if (!(joint.id in this.state.currentAngles)) {
-                this.state.currentAngles[joint.id] = targetAngle;
+            if (this.isAssessmentMode()) {
+                initialAngle = (joint.minAngle + joint.maxAngle) / 2;
+            } else {
+                initialAngle = targetPoint ? targetPoint.angle : 
+                              (joint.minAngle + joint.maxAngle) / 2;
+            }
+            
+            if (!(joint.id in this.modeState.currentAngles)) {
+                this.modeState.currentAngles[joint.id] = initialAngle;
             }
         });
     }
@@ -126,7 +172,7 @@ class ShadowPuppetApp {
     getCurrentTimeStep() {
         if (!this.state.character) return null;
         const firstSequence = this.state.character.joints[0]?.sequence || [];
-        return firstSequence[this.state.currentStep] || null;
+        return firstSequence[this.modeState.currentStep] || null;
     }
 
     getTotalSteps() {
@@ -166,7 +212,7 @@ class ShadowPuppetApp {
             const targetPoint = joint.sequence.find(p => p.time === currentTime);
             if (!targetPoint) return;
 
-            const actual = this.state.currentAngles[joint.id] ?? targetPoint.angle;
+            const actual = this.modeState.currentAngles[joint.id] ?? targetPoint.angle;
             const evaluation = this.evaluateAngle(actual, targetPoint.angle);
             
             jointResults.push({
@@ -177,7 +223,7 @@ class ShadowPuppetApp {
                 ...evaluation
             });
 
-            const stats = this.state.jointStats[joint.id];
+            const stats = this.modeState.jointStats[joint.id];
             stats.total++;
             stats[evaluation.result]++;
             stats.totalDeviation += evaluation.deviation;
@@ -189,51 +235,51 @@ class ShadowPuppetApp {
         });
 
         const avgDeviation = stepDeviation / jointResults.length;
-        this.state.totalDeviation += stepDeviation;
-        this.state.submissionCount += jointResults.length;
+        this.modeState.totalDeviation += stepDeviation;
+        this.modeState.submissionCount += jointResults.length;
 
         if (stepHasOff) {
-            this.state.consecutiveOff++;
-            if (this.state.consecutiveOff >= CONFIG.MAX_OFF_STREAK) {
-                this.state.currentStreak = 0;
-                this.state.consecutiveOff = 0;
+            this.modeState.consecutiveOff++;
+            if (this.modeState.consecutiveOff >= CONFIG.MAX_OFF_STREAK) {
+                this.modeState.currentStreak = 0;
+                this.modeState.consecutiveOff = 0;
                 this.showToast('连续 3 次 off，Streak 已清零！', 'error');
             }
         } else {
-            this.state.currentStreak++;
-            this.state.consecutiveOff = 0;
+            this.modeState.currentStreak++;
+            this.modeState.consecutiveOff = 0;
         }
 
-        if (this.state.currentStreak > this.state.bestStreak) {
-            this.state.bestStreak = this.state.currentStreak;
+        if (this.modeState.currentStreak > this.modeState.bestStreak) {
+            this.modeState.bestStreak = this.modeState.currentStreak;
             this.saveBestStreak();
-            this.showToast(`新的最佳 Streak：${this.state.bestStreak}！`, 'success');
+            this.showToast(`新的最佳 Streak：${this.modeState.bestStreak}！`, 'success');
         }
 
         const overallResult = stepHasOff ? 'off' : 
                               jointResults.every(r => r.result === 'match') ? 'match' : 'near';
 
-        this.state.history.push({
-            step: this.state.currentStep,
+        this.modeState.history.push({
+            step: this.modeState.currentStep,
             time: currentTime,
             results: jointResults,
             avgDeviation,
             overallResult,
-            streakAfter: this.state.currentStreak
+            streakAfter: this.modeState.currentStreak
         });
 
-        this.state.currentStep++;
+        this.modeState.currentStep++;
         this.advanceToNextStep();
         this.saveState();
         this.render();
 
-        if (this.state.currentStep >= this.getTotalSteps()) {
+        if (this.modeState.currentStep >= this.getTotalSteps()) {
             this.showToast('恭喜！已完成所有时间点的练习！', 'success');
         }
     }
 
     advanceToNextStep() {
-        if (this.state.currentStep >= this.getTotalSteps()) return;
+        if (this.modeState.currentStep >= this.getTotalSteps()) return;
         
         const timeStep = this.getCurrentTimeStep();
         if (!timeStep) return;
@@ -242,21 +288,25 @@ class ShadowPuppetApp {
         this.state.character.joints.forEach(joint => {
             const targetPoint = joint.sequence.find(p => p.time === currentTime);
             if (targetPoint) {
-                this.state.currentAngles[joint.id] = targetPoint.angle;
+                if (this.isAssessmentMode()) {
+                    this.modeState.currentAngles[joint.id] = (joint.minAngle + joint.maxAngle) / 2;
+                } else {
+                    this.modeState.currentAngles[joint.id] = targetPoint.angle;
+                }
             }
         });
     }
 
     undo() {
-        if (this.state.history.length === 0) {
+        if (this.modeState.history.length === 0) {
             this.showToast('没有可撤销的操作', 'warning');
             return;
         }
 
-        const lastEntry = this.state.history.pop();
+        const lastEntry = this.modeState.history.pop();
         
         lastEntry.results.forEach(result => {
-            const stats = this.state.jointStats[result.jointId];
+            const stats = this.modeState.jointStats[result.jointId];
             if (stats && stats.total > 0) {
                 stats.total--;
                 stats[result.result]--;
@@ -264,12 +314,12 @@ class ShadowPuppetApp {
             }
         });
 
-        this.state.totalDeviation -= lastEntry.avgDeviation * lastEntry.results.length;
-        this.state.submissionCount -= lastEntry.results.length;
+        this.modeState.totalDeviation -= lastEntry.avgDeviation * lastEntry.results.length;
+        this.modeState.submissionCount -= lastEntry.results.length;
 
-        this.state.currentStep = lastEntry.step;
-        this.state.currentStreak = this.calculateStreakAfterUndo();
-        this.state.consecutiveOff = this.calculateConsecutiveOffAfterUndo();
+        this.modeState.currentStep = lastEntry.step;
+        this.modeState.currentStreak = this.calculateStreakAfterUndo();
+        this.modeState.consecutiveOff = this.calculateConsecutiveOffAfterUndo();
 
         const timeStep = this.getCurrentTimeStep();
         if (timeStep) {
@@ -277,7 +327,11 @@ class ShadowPuppetApp {
             this.state.character.joints.forEach(joint => {
                 const targetPoint = joint.sequence.find(p => p.time === currentTime);
                 if (targetPoint) {
-                    this.state.currentAngles[joint.id] = targetPoint.angle;
+                    if (this.isAssessmentMode()) {
+                        this.modeState.currentAngles[joint.id] = (joint.minAngle + joint.maxAngle) / 2;
+                    } else {
+                        this.modeState.currentAngles[joint.id] = targetPoint.angle;
+                    }
                 }
             });
         }
@@ -291,7 +345,7 @@ class ShadowPuppetApp {
         let streak = 0;
         let consecutiveOff = 0;
         
-        for (const entry of this.state.history) {
+        for (const entry of this.modeState.history) {
             if (entry.overallResult === 'off') {
                 consecutiveOff++;
                 if (consecutiveOff >= CONFIG.MAX_OFF_STREAK) {
@@ -310,8 +364,8 @@ class ShadowPuppetApp {
     calculateConsecutiveOffAfterUndo() {
         let consecutiveOff = 0;
         
-        for (let i = this.state.history.length - 1; i >= 0; i--) {
-            if (this.state.history[i].overallResult === 'off') {
+        for (let i = this.modeState.history.length - 1; i >= 0; i--) {
+            if (this.modeState.history[i].overallResult === 'off') {
                 consecutiveOff++;
             } else {
                 break;
@@ -322,14 +376,14 @@ class ShadowPuppetApp {
     }
 
     resetState(saveToStorage = true) {
-        this.state.currentStep = 0;
-        this.state.currentStreak = 0;
-        this.state.consecutiveOff = 0;
-        this.state.history = [];
-        this.state.jointStats = {};
-        this.state.totalDeviation = 0;
-        this.state.submissionCount = 0;
-        this.state.currentAngles = {};
+        this.modeState.currentStep = 0;
+        this.modeState.currentStreak = 0;
+        this.modeState.consecutiveOff = 0;
+        this.modeState.history = [];
+        this.modeState.jointStats = {};
+        this.modeState.totalDeviation = 0;
+        this.modeState.submissionCount = 0;
+        this.modeState.currentAngles = {};
         
         if (saveToStorage) {
             this.saveState();
@@ -342,19 +396,19 @@ class ShadowPuppetApp {
             return;
         }
 
-        if (confirm('确定要重置所有进度吗？此操作不可撤销。')) {
+        if (confirm('确定要重置当前模式的进度吗？此操作不可撤销。')) {
             this.resetState();
             this.initializeJointStats();
             this.initializeCurrentAngles();
             this.render();
-            this.showToast('已重置进度', 'success');
+            this.showToast('已重置当前模式进度', 'success');
         }
     }
 
     updateAngle(jointId, value) {
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
-            this.state.currentAngles[jointId] = numValue;
+            this.modeState.currentAngles[jointId] = numValue;
             this.updateJointPreview(jointId);
         }
     }
@@ -369,13 +423,15 @@ class ShadowPuppetApp {
         const targetPoint = joint.sequence.find(p => p.time === timeStep.time);
         if (!targetPoint) return;
 
-        const actual = this.state.currentAngles[jointId] ?? targetPoint.angle;
+        const actual = this.modeState.currentAngles[jointId] ?? targetPoint.angle;
         const evaluation = this.evaluateAngle(actual, targetPoint.angle);
         
-        const statusEl = document.querySelector(`[data-joint="${jointId}"] .joint-status span:last-child`);
-        if (statusEl) {
-            statusEl.textContent = `偏差：${evaluation.deviation.toFixed(1)}° (${this.getResultText(evaluation.result)})`;
-            statusEl.className = `status-${evaluation.result}`;
+        if (!this.isAssessmentMode()) {
+            const statusEl = document.querySelector(`[data-joint="${jointId}"] .joint-status span:last-child`);
+            if (statusEl) {
+                statusEl.textContent = `偏差：${evaluation.deviation.toFixed(1)}° (${this.getResultText(evaluation.result)})`;
+                statusEl.className = `status-${evaluation.result}`;
+            }
         }
     }
 
@@ -393,21 +449,25 @@ class ShadowPuppetApp {
         
         const saveData = {
             characterFile: this.state.currentCharacterFile,
-            currentStep: this.state.currentStep,
-            currentStreak: this.state.currentStreak,
-            consecutiveOff: this.state.consecutiveOff,
-            history: this.state.history,
-            jointStats: this.state.jointStats,
-            totalDeviation: this.state.totalDeviation,
-            submissionCount: this.state.submissionCount,
-            currentAngles: this.state.currentAngles,
+            currentStep: this.modeState.currentStep,
+            currentStreak: this.modeState.currentStreak,
+            consecutiveOff: this.modeState.consecutiveOff,
+            history: this.modeState.history,
+            jointStats: this.modeState.jointStats,
+            totalDeviation: this.modeState.totalDeviation,
+            submissionCount: this.modeState.submissionCount,
+            currentAngles: this.modeState.currentAngles,
             timestamp: Date.now()
         };
         
         try {
             localStorage.setItem(
-                CONFIG.STORAGE_KEYS.SAVE_STATE + this.state.currentCharacterFile,
+                this.getStorageKey(CONFIG.STORAGE_KEYS.SAVE_STATE, this.state.currentCharacterFile),
                 JSON.stringify(saveData)
+            );
+            localStorage.setItem(
+                CONFIG.STORAGE_KEYS.LAST_MODE + this.state.currentCharacterFile,
+                this.state.currentMode
             );
         } catch (e) {
             console.warn('保存状态失败:', e);
@@ -415,8 +475,12 @@ class ShadowPuppetApp {
     }
 
     async tryRestoreState() {
-        const lastCharacter = localStorage.getItem('shadow_puppet_last_character');
+        const lastCharacter = localStorage.getItem(CONFIG.STORAGE_KEYS.LAST_CHARACTER);
         if (lastCharacter) {
+            const lastMode = localStorage.getItem(CONFIG.STORAGE_KEYS.LAST_MODE + lastCharacter);
+            if (lastMode && (lastMode === CONFIG.MODES.PRACTICE || lastMode === CONFIG.MODES.ASSESSMENT)) {
+                this.state.currentMode = lastMode;
+            }
             document.getElementById('characterSelect').value = lastCharacter;
             const restored = await this.loadCharacter(lastCharacter);
             if (restored) {
@@ -429,24 +493,24 @@ class ShadowPuppetApp {
 
     restoreStateFromStorage(filename) {
         try {
-            const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.SAVE_STATE + filename);
+            const saved = localStorage.getItem(this.getStorageKey(CONFIG.STORAGE_KEYS.SAVE_STATE, filename));
             if (!saved) return false;
             
             const saveData = JSON.parse(saved);
             
             if (Date.now() - saveData.timestamp > 24 * 60 * 60 * 1000) {
-                localStorage.removeItem(CONFIG.STORAGE_KEYS.SAVE_STATE + filename);
+                localStorage.removeItem(this.getStorageKey(CONFIG.STORAGE_KEYS.SAVE_STATE, filename));
                 return false;
             }
             
-            this.state.currentStep = saveData.currentStep;
-            this.state.currentStreak = saveData.currentStreak;
-            this.state.consecutiveOff = saveData.consecutiveOff;
-            this.state.history = saveData.history || [];
-            this.state.jointStats = saveData.jointStats || {};
-            this.state.totalDeviation = saveData.totalDeviation || 0;
-            this.state.submissionCount = saveData.submissionCount || 0;
-            this.state.currentAngles = saveData.currentAngles || {};
+            this.modeState.currentStep = saveData.currentStep;
+            this.modeState.currentStreak = saveData.currentStreak;
+            this.modeState.consecutiveOff = saveData.consecutiveOff;
+            this.modeState.history = saveData.history || [];
+            this.modeState.jointStats = saveData.jointStats || {};
+            this.modeState.totalDeviation = saveData.totalDeviation || 0;
+            this.modeState.submissionCount = saveData.submissionCount || 0;
+            this.modeState.currentAngles = saveData.currentAngles || {};
             
             return true;
         } catch (e) {
@@ -459,11 +523,11 @@ class ShadowPuppetApp {
         if (!this.state.currentCharacterFile) return;
         
         try {
-            const key = CONFIG.STORAGE_KEYS.BEST_STREAK + this.state.currentCharacterFile;
+            const key = this.getStorageKey(CONFIG.STORAGE_KEYS.BEST_STREAK, this.state.currentCharacterFile);
             const currentBest = parseInt(localStorage.getItem(key) || '0');
             
-            if (this.state.bestStreak > currentBest) {
-                localStorage.setItem(key, this.state.bestStreak.toString());
+            if (this.modeState.bestStreak > currentBest) {
+                localStorage.setItem(key, this.modeState.bestStreak.toString());
             }
         } catch (e) {
             console.warn('保存最佳记录失败:', e);
@@ -474,17 +538,57 @@ class ShadowPuppetApp {
         if (!this.state.currentCharacterFile) return 0;
         
         try {
-            const key = CONFIG.STORAGE_KEYS.BEST_STREAK + this.state.currentCharacterFile;
+            const key = this.getStorageKey(CONFIG.STORAGE_KEYS.BEST_STREAK, this.state.currentCharacterFile);
             return parseInt(localStorage.getItem(key) || '0');
         } catch (e) {
             return 0;
         }
     }
 
+    switchMode(mode) {
+        if (mode === this.state.currentMode) return;
+        if (mode !== CONFIG.MODES.PRACTICE && mode !== CONFIG.MODES.ASSESSMENT) return;
+
+        this.state.currentMode = mode;
+        
+        if (this.state.currentCharacterFile) {
+            const restored = this.restoreStateFromStorage(this.state.currentCharacterFile);
+            if (!restored) {
+                this.resetState(false);
+            }
+            this.initializeJointStats();
+            this.initializeCurrentAngles();
+            this.saveState();
+        }
+        
+        this.updateModeIndicator();
+        this.render();
+        
+        const modeText = mode === CONFIG.MODES.PRACTICE ? '练习' : '考核';
+        this.showToast(`已切换到${modeText}模式`, 'success');
+    }
+
+    updateModeIndicator() {
+        const body = document.body;
+        if (this.isAssessmentMode()) {
+            body.classList.add('assessment-mode');
+        } else {
+            body.classList.remove('assessment-mode');
+        }
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            if (btn.dataset.mode === this.state.currentMode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
     render() {
         if (!this.state.character) return;
 
-        this.state.bestStreak = Math.max(this.state.bestStreak, this.loadBestStreak());
+        this.modeState.bestStreak = Math.max(this.modeState.bestStreak, this.loadBestStreak());
 
         this.renderStatusPanel();
         this.renderJointStats();
@@ -494,9 +598,9 @@ class ShadowPuppetApp {
     }
 
     renderStatusPanel() {
-        document.getElementById('currentStreak').textContent = this.state.currentStreak;
-        document.getElementById('bestStreak').textContent = this.state.bestStreak;
-        document.getElementById('currentStep').textContent = this.state.currentStep;
+        document.getElementById('currentStreak').textContent = this.modeState.currentStreak;
+        document.getElementById('bestStreak').textContent = this.modeState.bestStreak;
+        document.getElementById('currentStep').textContent = this.modeState.currentStep;
         document.getElementById('totalSteps').textContent = this.getTotalSteps();
 
         const timeStep = this.getCurrentTimeStep();
@@ -508,7 +612,7 @@ class ShadowPuppetApp {
         grid.innerHTML = '';
 
         this.state.character.joints.forEach(joint => {
-            const stats = this.state.jointStats[joint.id];
+            const stats = this.modeState.jointStats[joint.id];
             const matchRate = stats.total > 0 ? ((stats.match / stats.total) * 100).toFixed(1) : 0;
             const avgDev = stats.total > 0 ? (stats.totalDeviation / stats.total).toFixed(1) : 0;
 
@@ -525,11 +629,11 @@ class ShadowPuppetApp {
             grid.appendChild(card);
         });
 
-        const overallMatchRate = this.state.submissionCount > 0 
-            ? ((Object.values(this.state.jointStats).reduce((sum, s) => sum + s.match, 0) / this.state.submissionCount) * 100).toFixed(1)
+        const overallMatchRate = this.modeState.submissionCount > 0 
+            ? ((Object.values(this.modeState.jointStats).reduce((sum, s) => sum + s.match, 0) / this.modeState.submissionCount) * 100).toFixed(1)
             : 0;
-        const overallAvgDev = this.state.submissionCount > 0 
-            ? (this.state.totalDeviation / this.state.submissionCount).toFixed(1)
+        const overallAvgDev = this.modeState.submissionCount > 0 
+            ? (this.modeState.totalDeviation / this.modeState.submissionCount).toFixed(1)
             : 0;
 
         document.getElementById('overallMatchRate').textContent = `${overallMatchRate}%`;
@@ -547,21 +651,33 @@ class ShadowPuppetApp {
         }
 
         const currentTime = timeStep.time;
+        const isAssessment = this.isAssessmentMode();
 
         this.state.character.joints.forEach(joint => {
             const targetPoint = joint.sequence.find(p => p.time === currentTime);
             if (!targetPoint) return;
 
-            const currentAngle = this.state.currentAngles[joint.id] ?? targetPoint.angle;
+            const currentAngle = this.modeState.currentAngles[joint.id] ?? (isAssessment ? (joint.minAngle + joint.maxAngle) / 2 : targetPoint.angle);
             const evaluation = this.evaluateAngle(currentAngle, targetPoint.angle);
 
             const control = document.createElement('div');
             control.className = 'joint-control';
             control.dataset.joint = joint.id;
+            
+            let targetAngleHtml = '';
+            if (!isAssessment) {
+                targetAngleHtml = `<span class="target-angle">目标：${targetPoint.angle}°</span>`;
+            }
+
+            let statusHtml = `<span>范围：${joint.minAngle}° - ${joint.maxAngle}°</span>`;
+            if (!isAssessment) {
+                statusHtml += `<span class="status-${evaluation.result}">偏差：${evaluation.deviation.toFixed(1)}° (${this.getResultText(evaluation.result)})</span>`;
+            }
+
             control.innerHTML = `
                 <div class="joint-control-header">
                     <span class="joint-name">${joint.name}</span>
-                    <span class="target-angle">目标：${targetPoint.angle}°</span>
+                    ${targetAngleHtml}
                 </div>
                 <div class="slider-container">
                     <input type="range" 
@@ -579,8 +695,7 @@ class ShadowPuppetApp {
                            step="1">
                 </div>
                 <div class="joint-status">
-                    <span>范围：${joint.minAngle}° - ${joint.maxAngle}°</span>
-                    <span class="status-${evaluation.result}">偏差：${evaluation.deviation.toFixed(1)}° (${this.getResultText(evaluation.result)})</span>
+                    ${statusHtml}
                 </div>
             `;
             container.appendChild(control);
@@ -606,20 +721,20 @@ class ShadowPuppetApp {
     renderHistory() {
         const list = document.getElementById('historyList');
         
-        if (this.state.history.length === 0) {
+        if (this.modeState.history.length === 0) {
             list.innerHTML = '<div style="text-align: center; color: #888; padding: 40px;">暂无操作记录</div>';
             return;
         }
 
         list.innerHTML = '';
         
-        [...this.state.history].reverse().forEach(entry => {
+        [...this.modeState.history].reverse().forEach(entry => {
             const item = document.createElement('div');
             item.className = `history-item ${entry.overallResult}`;
             
             const jointsHtml = entry.results.map(r => `
                 <span class="history-joint status-${r.result}">
-                    ${r.jointName}: ${r.actual.toFixed(0)}° (${r.result})
+                    ${r.jointName}: ${r.actual.toFixed(0)}° → ${r.target}° (${r.result})
                 </span>
             `).join('');
 
@@ -635,8 +750,8 @@ class ShadowPuppetApp {
     }
 
     updateButtonStates() {
-        document.getElementById('submitBtn').disabled = this.state.currentStep >= this.getTotalSteps();
-        document.getElementById('undoBtn').disabled = this.state.history.length === 0;
+        document.getElementById('submitBtn').disabled = this.modeState.currentStep >= this.getTotalSteps();
+        document.getElementById('undoBtn').disabled = this.modeState.history.length === 0;
     }
 
     showToast(message, type = 'success') {
@@ -654,10 +769,17 @@ class ShadowPuppetApp {
             const filename = document.getElementById('characterSelect').value;
             this.resetState(false);
             const restored = await this.loadCharacter(filename);
-            localStorage.setItem('shadow_puppet_last_character', filename);
+            localStorage.setItem(CONFIG.STORAGE_KEYS.LAST_CHARACTER, filename);
             if (restored) {
                 this.showToast('已恢复上次进度', 'success');
             }
+        });
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                this.switchMode(mode);
+            });
         });
 
         document.getElementById('submitBtn').addEventListener('click', () => this.submit());
