@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>皮影戏关节开合角度序列自检</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>皮影戏关节开合角度序列自检</h1>
+            <div class="character-selector">
+                <label for="characterSelect">角色：</label>
+                <select id="characterSelect"></select>
+                <button id="loadCharacterBtn">加载</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="status-panel">
+                <div class="status-card streak-card">
+                    <div class="status-label">当前 Streak</div>
+                    <div class="status-value" id="currentStreak">0</div>
+                </div>
+                <div class="status-card best-card">
+                    <div class="status-label">最佳 Streak</div>
+                    <div class="status-value" id="bestStreak">0</div>
+                </div>
+                <div class="status-card progress-card">
+                    <div class="status-label">进度</div>
+                    <div class="status-value">
+                        <span id="currentStep">0</span> / <span id="totalSteps">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-panel">
+                <h2>统计数据</h2>
+                <div class="stats-grid" id="jointStats"></div>
+                <div class="overall-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">总体 Match 占比：</span>
+                        <span class="stat-value" id="overallMatchRate">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">平均偏差：</span>
+                        <span class="stat-value" id="avgDeviation">0°</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="control-panel">
+                <h2>关节控制</h2>
+                <div class="time-display">
+                    <span class="time-label">当前时间点：</span>
+                    <span class="time-value" id="currentTime">0s</span>
+                </div>
+                <div class="joint-controls" id="jointControls"></div>
+                <div class="action-buttons">
+                    <button id="submitBtn" class="btn btn-primary">提交</button>
+                    <button id="undoBtn" class="btn btn-secondary">撤销</button>
+                    <button id="resetBtn" class="btn btn-danger">重置</button>
+                </div>
+            </section>
+
+            <section class="history-panel">
+                <h2>操作记录</h2>
+                <div class="history-list" id="historyList"></div>
+            </section>
+        </main>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+{
+  "name": "关公立像",
+  "description": "关羽，字云长，三国时期蜀汉名将。皮影戏中关公形象通常为红脸、丹凤眼、卧蚕眉，手持青龙偃月刀，身披绿袍金甲。",
+  "joints": [
+    {
+      "id": "shoulder_left",
+      "name": "左肩",
+      "minAngle": 0,
+      "maxAngle": 180,
+      "sequence": [
+        { "time": 0, "angle": 30 },
+        { "time": 1, "angle": 45 },
+        { "time": 2, "angle": 60 },
+        { "time": 3, "angle": 75 },
+        { "time": 4, "angle": 90 },
+        { "time": 5, "angle": 75 },
+        { "time": 6, "angle": 60 },
+        { "time": 7, "angle": 45 },
+        { "time": 8, "angle": 30 },
+        { "time": 9, "angle": 15 },
+        { "time": 10, "angle": 30 }
+      ]
+    },
+    {
+      "id": "shoulder_right",
+      "name": "右肩",
+      "minAngle": 0,
+      "maxAngle": 180,
+      "sequence": [
+        { "time": 0, "angle": 120 },
+        { "time": 1, "angle": 110 },
+        { "time": 2, "angle": 100 },
+        { "time": 3, "angle": 90 },
+        { "time": 4, "angle": 80 },
+        { "time": 5, "angle": 90 },
+        { "time": 6, "angle": 100 },
+        { "time": 7, "angle": 110 },
+        { "time": 8, "angle": 120 },
+        { "time": 9, "angle": 130 },
+        { "time": 10, "angle": 120 }
+      ]
+    },
+    {
+      "id": "elbow_left",
+      "name": "左肘",
+      "minAngle": 30,
+      "maxAngle": 150,
+      "sequence": [
+        { "time": 0, "angle": 120 },
+        { "time": 1, "angle": 110 },
+        { "time": 2, "angle": 100 },
+        { "time": 3, "angle": 90 },
+        { "time": 4, "angle": 80 },
+        { "time": 5, "angle": 90 },
+        { "time": 6, "angle": 100 },
+        { "time": 7, "angle": 110 },
+        { "time": 8, "angle": 120 },
+        { "time": 9, "angle": 130 },
+        { "time": 10, "angle": 120 }
+      ]
+    },
+    {
+      "id": "elbow_right",
+      "name": "右肘",
+      "minAngle": 30,
+      "maxAngle": 150,
+      "sequence": [
+        { "time": 0, "angle": 60 },
+        { "time": 1, "angle": 70 },
+        { "time": 2, "angle": 80 },
+        { "time": 3, "angle": 90 },
+        { "time": 4, "angle": 100 },
+        { "time": 5, "angle": 90 },
+        { "time": 6, "angle": 80 },
+        { "time": 7, "angle": 70 },
+        { "time": 8, "angle": 60 },
+        { "time": 9, "angle": 50 },
+        { "time": 10, "angle": 60 }
+      ]
+    },
+    {
+      "id": "wrist_left",
+      "name": "左腕",
+      "minAngle": 0,
+      "maxAngle": 90,
+      "sequence": [
+        { "time": 0, "angle": 45 },
+        { "time": 1, "angle": 50 },
+        { "time": 2, "angle": 55 },
+        { "time": 3, "angle": 60 },
+        { "time": 4, "angle": 65 },
+        { "time": 5, "angle": 60 },
+        { "time": 6, "angle": 55 },
+        { "time": 7, "angle": 50 },
+        { "time": 8, "angle": 45 },
+        { "time": 9, "angle": 40 },
+        { "time": 10, "angle": 45 }
+      ]
+    },
+    {
+      "id": "wrist_right",
+      "name": "右腕",
+      "minAngle": 0,
+      "maxAngle": 90,
+      "sequence": [
+        { "time": 0, "angle": 15 },
+        { "time": 1, "angle": 20 },
+        { "time": 2, "angle": 25 },
+        { "time": 3, "angle": 30 },
+        { "time": 4, "angle": 35 },
+        { "time": 5, "angle": 30 },
+        { "time": 6, "angle": 25 },
+        { "time": 7, "angle": 20 },
+        { "time": 8, "angle": 15 },
+        { "time": 9, "angle": 10 },
+        { "time": 10, "angle": 15 }
+      ]
+    }
+  ]
+}
